@@ -1,5 +1,18 @@
+# Virtual Environments
 .venv/
+venv/
+env/
+
+# Python Cache
 __pycache__/
 *.pyc
-data/raw/
-*.zip
+
+# Dataset and Raw Files (Do not upload data)
+raw/
+DATASET/
+
+# Generated Reports & Plots (Keep Local Only)
+Final_Report.md
+Final_Report.pdf
+final_metrics_chart.png
+final_comparison_plot.png
