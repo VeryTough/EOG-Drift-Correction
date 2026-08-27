@@ -1,5 +1,11 @@
+print("RUNNING WAVELET EXPERIMENT")
+
+from collections import Counter
+
 from dataset import load_subject, extract_trials
 from detector import detect_events
+from evaluation import evaluate_events
+from drift_correction import wavelet_detrend
 
 
 FS = 256
@@ -8,27 +14,27 @@ THRESHOLD = 1000
 
 def main():
 
-    # Load S1
     eog, control, target_ga = load_subject("S1")
 
-    # Split into trials
     trials = extract_trials(
         eog,
         control,
         target_ga
     )
 
-    total_expected = 0
-    total_detected = 0
-    total_missed = 0
-    total_false_positives = 0
+    matched_count = Counter()
+    missed_count = Counter()
+    false_positives = 0
 
-    print("Running raw EOG experiment...")
     print("Trials:", len(trials))
 
-    for trial in trials:
+    for trial_number, trial in enumerate(trials, start=1):
 
-        signal = trial["horizontal"]
+        signal = wavelet_detrend(
+            trial["horizontal"],
+            wavelet="db4",
+            level=8
+        )
 
         events = detect_events(
             signal,
@@ -36,55 +42,54 @@ def main():
             velocity_threshold=THRESHOLD
         )
 
-        # Every trial should contain:
-        # 1 forward saccade
-        # 1 return saccade
-        # 1 blink
-        expected = 3
-
-        total_expected += expected
-
-        # For this first baseline,
-        # count detected events.
-        total_detected += min(
-            len(events),
-            expected
+        matched, missed, false = evaluate_events(
+            events,
+            trial["control"]
         )
 
-        if len(events) < expected:
-            total_missed += expected - len(events)
+        for event in matched:
+            matched_count[event["type"]] += 1
 
-        if len(events) > expected:
-            total_false_positives += len(events) - expected
+        for event in missed:
+            missed_count[event["type"]] += 1
 
-    detection_rate = (
-        total_detected / total_expected
-    ) * 100
+        false_positives += len(false)
 
-    print("\n===== RAW EOG RESULTS =====")
+        # Progress every 25 trials
+        if trial_number % 25 == 0:
+            print(
+                f"Processed {trial_number}/"
+                f"{len(trials)} trials..."
+            )
+
+    print("\n===== WAVELET EOG RESULTS =====")
+
+    for event_type in [
+        "forward_saccade",
+        "return_saccade",
+        "blink"
+    ]:
+
+        detected = matched_count[event_type]
+        missed = missed_count[event_type]
+
+        total = detected + missed
+
+        accuracy = (
+            detected / total * 100
+            if total > 0
+            else 0
+        )
+
+        print(
+            f"{event_type}: "
+            f"{detected}/{total} "
+            f"({accuracy:.2f}%)"
+        )
 
     print(
-        "Expected events:",
-        total_expected
-    )
-
-    print(
-        "Detected events:",
-        total_detected
-    )
-
-    print(
-        "Missed events:",
-        total_missed
-    )
-
-    print(
-        "False positives:",
-        total_false_positives
-    )
-
-    print(
-        f"Detection rate: {detection_rate:.2f}%"
+        "\nFalse positives:",
+        false_positives
     )
 
 

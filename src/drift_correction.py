@@ -5,8 +5,10 @@ from scipy.signal import butter, filtfilt
 
 def highpass_filter(signal, fs, cutoff=0.1, order=2):
     """
-    Remove slow baseline drift using a Butterworth high-pass filter.
+    Remove slow baseline drift using a Butterworth
+    high-pass filter.
     """
+
     nyquist = fs / 2
     normalised_cutoff = cutoff / nyquist
 
@@ -16,7 +18,11 @@ def highpass_filter(signal, fs, cutoff=0.1, order=2):
         btype="highpass"
     )
 
-    return filtfilt(b, a, signal)
+    return filtfilt(
+        b,
+        a,
+        signal
+    )
 
 
 def polynomial_detrend(signal, order=3):
@@ -24,7 +30,11 @@ def polynomial_detrend(signal, order=3):
     Remove a polynomial estimate of the baseline drift.
     """
 
-    x = np.linspace(-1, 1, len(signal))
+    x = np.linspace(
+        -1,
+        1,
+        len(signal)
+    )
 
     coefficients = np.polyfit(
         x,
@@ -48,14 +58,11 @@ def wavelet_detrend(
     """
     Remove low-frequency baseline drift using
     wavelet decomposition.
-
-    The approximation coefficients represent
-    the lowest-frequency component and are removed.
     """
 
     coefficients = pywt.wavedec(
         signal,
-        wavelet,
+        wavelet=wavelet,
         level=level
     )
 
@@ -66,8 +73,9 @@ def wavelet_detrend(
 
     corrected = pywt.waverec(
         coefficients,
-        wavelet
+        wavelet=wavelet
     )
 
-    # waverec can occasionally return one extra sample
+    # Make sure output has exactly the same
+    # number of samples as the input
     return corrected[:len(signal)]
